@@ -7,6 +7,7 @@
 
   <style>
     #map { height: 400px; }
+    button { margin: 5px; }
   </style>
 </head>
 
@@ -23,19 +24,22 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
+
+// MAP INIT
 let map = L.map('map').setView([0, 0], 2);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
+// VARIABLES
 let watchId;
 let path = [];
 let polyline = L.polyline([], {color: 'blue'}).addTo(map);
 
 // START TRACKING
 function startTracking() {
-  path = []; // reset old path
+  path = []; // reset
 
   watchId = navigator.geolocation.watchPosition((pos) => {
     let lat = pos.coords.latitude;
@@ -48,12 +52,12 @@ function startTracking() {
   });
 }
 
-// STOP + DOWNLOAD FILE
+// STOP + DOWNLOAD (MOBILE FIXED)
 function stopTracking() {
   navigator.geolocation.clearWatch(watchId);
 
   let data = {
-    time: new Date(),
+    time: new Date().toISOString(),
     route: path
   };
 
@@ -65,11 +69,15 @@ function stopTracking() {
   let a = document.createElement("a");
   a.href = url;
   a.download = "gps-data.json";
-  a.click();
 
-  URL.revokeObjectURL(url);
+  document.body.appendChild(a);
 
-  console.log("Downloaded:", data);
+  // 🔥 MOBILE FIX (delay click)
+  setTimeout(() => {
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 500);
 }
 
 // CLEAR MAP
@@ -77,6 +85,7 @@ function clearData() {
   path = [];
   polyline.setLatLngs([]);
 }
+
 </script>
 
 </body>
