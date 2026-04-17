@@ -17,6 +17,7 @@
 
 <button onclick="startTracking()">Start</button>
 <button onclick="stopTracking()">Stop</button>
+<button onclick="clearData()">Clear Data</button>
 
 <div id="map"></div>
 
@@ -24,6 +25,7 @@
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
+// Map init
 let map = L.map('map').setView([0, 0], 2);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -34,6 +36,7 @@ let watchId;
 let path = [];
 let polyline = L.polyline([], {color: 'blue'}).addTo(map);
 
+// Start tracking
 function startTracking() {
   watchId = navigator.geolocation.watchPosition((pos) => {
     let lat = pos.coords.latitude;
@@ -46,9 +49,36 @@ function startTracking() {
   });
 }
 
+// Stop + save
 function stopTracking() {
   navigator.geolocation.clearWatch(watchId);
-  console.log("Full Path:", path);
+
+  localStorage.setItem("gpsPath", JSON.stringify(path));
+
+  console.log("Saved Path:", path);
+}
+
+// Load saved data on refresh
+window.onload = function () {
+  let saved = localStorage.getItem("gpsPath");
+
+  if (saved) {
+    let savedPath = JSON.parse(saved);
+
+    path = savedPath; // important
+
+    savedPath.forEach(p => polyline.addLatLng(p));
+
+    if (savedPath.length > 0) {
+      map.setView(savedPath[savedPath.length - 1], 16);
+    }
+  }
+};
+
+// Clear saved data
+function clearData() {
+  localStorage.removeItem("gpsPath");
+  location.reload();
 }
 </script>
 
