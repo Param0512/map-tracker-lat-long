@@ -3,24 +3,11 @@
 <head>
   <title>GPS Tracker</title>
 
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
   <style>
     #map { height: 400px; }
-
-    #status {
-      margin: 10px 0;
-      font-weight: bold;
-    }
-
-    .recording {
-      color: red;
-      animation: blink 1s infinite;
-    }
-
-    @keyframes blink {
-      50% { opacity: 0; }
-    }
   </style>
 </head>
 
@@ -29,12 +16,11 @@
 <h2>GPS Tracker</h2>
 
 <button onclick="startTracking()">Start</button>
-<button onclick="stopTracking()">Stop & Download</button>
-
-<div id="status">Status: Stopped</div>
+<button onclick="stopTracking()">Stop</button>
 
 <div id="map"></div>
 
+<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
@@ -44,88 +30,25 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-// ===== YOUR VARIABLES (upgraded) =====
-let intervalId;
+let watchId;
 let path = [];
-let polyline = L.polyline([], { color: 'blue' }).addTo(map);
+let polyline = L.polyline([], {color: 'blue'}).addTo(map);
 
-// ===== STATUS UI =====
-function updateStatus(isRecording) {
-  let status = document.getElementById("status");
-
-  if (isRecording) {
-    status.innerHTML = "🔴 Recording...";
-    status.classList.add("recording");
-  } else {
-    status.innerHTML = "⏹ Stopped";
-    status.classList.remove("recording");
-  }
-}
-
-// ===== START (YOUR CODE UPGRADED) =====
 function startTracking() {
-  if (intervalId) return;
+  watchId = navigator.geolocation.watchPosition((pos) => {
+    let lat = pos.coords.latitude;
+    let lng = pos.coords.longitude;
 
-  path = [];
-  polyline.setLatLngs([]);
+    path.push([lat, lng]);
+    polyline.addLatLng([lat, lng]);
 
-  updateStatus(true);
-
-  intervalId = setInterval(() => {
-    navigator.geolocation.getCurrentPosition((pos) => {
-      let lat = pos.coords.latitude;
-      let lng = pos.coords.longitude;
-
-      path.push([lat, lng]);
-      polyline.addLatLng([lat, lng]);
-
-      map.setView([lat, lng], 16);
-
-      console.log("Lat:", lat, "Lng:", lng);
-    }, (err) => console.log(err), {
-      enableHighAccuracy: true
-    });
-  }, 1000);
-}
-
-// ===== STOP (ADDED DOWNLOAD) =====
-function stopTracking() {
-  clearInterval(intervalId);
-  intervalId = null;
-
-  updateStatus(false);
-
-  console.log("Full Path:", path);
-
-  downloadJSON();
-  downloadCSV();
-}
-
-// ===== DOWNLOAD JSON =====
-function downloadJSON() {
-  let dataStr = "data:text/json;charset=utf-8," +
-    encodeURIComponent(JSON.stringify(path));
-
-  let link = document.createElement("a");
-  link.href = dataStr;
-  link.download = "gps_path.json";
-  link.click();
-}
-
-// ===== DOWNLOAD CSV =====
-function downloadCSV() {
-  let csv = "Latitude,Longitude\n";
-
-  path.forEach(p => {
-    csv += p[0] + "," + p[1] + "\n";
+    map.setView([lat, lng], 16);
   });
+}
 
-  let dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
-
-  let link = document.createElement("a");
-  link.href = dataStr;
-  link.download = "gps_path.csv";
-  link.click();
+function stopTracking() {
+  navigator.geolocation.clearWatch(watchId);
+  console.log("Full Path:", path);
 }
 </script>
 
