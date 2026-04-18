@@ -3,11 +3,11 @@
 <head>
   <title>GPS Tracker</title>
 
+  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
   <style>
     #map { height: 400px; }
-    button { margin: 5px; }
   </style>
 </head>
 
@@ -17,75 +17,56 @@
 
 <button onclick="startTracking()">Start</button>
 <button onclick="stopTracking()">Stop & Download</button>
-<button onclick="clearData()">Clear</button>
 
 <div id="map"></div>
 
+<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
-
-// MAP INIT
 let map = L.map('map').setView([0, 0], 2);
 
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-// VARIABLES
-let watchId;
+let intervalId;
 let path = [];
 let polyline = L.polyline([], {color: 'blue'}).addTo(map);
 
-// START TRACKING
 function startTracking() {
-  path = []; // reset
+  if (intervalId) return;
 
-  watchId = navigator.geolocation.watchPosition((pos) => {
-    let lat = pos.coords.latitude;
-    let lng = pos.coords.longitude;
+  intervalId = setInterval(() => {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      let lat = pos.coords.latitude;
+      let lng = pos.coords.longitude;
 
-    path.push([lat, lng]);
-    polyline.addLatLng([lat, lng]);
+      path.push([lat, lng]);
+      polyline.addLatLng([lat, lng]);
 
-    map.setView([lat, lng], 16);
-  });
+      map.setView([lat, lng], 16);
+
+      console.log("Lat:", lat, "Lng:", lng);
+    }, (err) => console.log(err), {
+      enableHighAccuracy: true
+    });
+  }, 1000); // हर 1 second
 }
 
-// STOP + DOWNLOAD (MOBILE FIXED)
 function stopTracking() {
-  navigator.geolocation.clearWatch(watchId);
+  clearInterval(intervalId);
+  intervalId = null;
 
-  let data = {
-    time: new Date().toISOString(),
-    route: path
-  };
+  console.log("Full Path:", path);
 
-  let json = JSON.stringify(data, null, 2);
-
-  let blob = new Blob([json], { type: "application/json" });
-  let url = URL.createObjectURL(blob);
-
-  let a = document.createElement("a");
-  a.href = url;
-  a.download = "gps-data.json";
-
-  document.body.appendChild(a);
-
-  // 🔥 MOBILE FIX (delay click)
-  setTimeout(() => {
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  }, 500);
+  // 📥 Download as JSON file
+  let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(path));
+  let dlAnchor = document.createElement('a');
+  dlAnchor.setAttribute("href", dataStr);
+  dlAnchor.setAttribute("download", "gps_path.json");
+  dlAnchor.click();
 }
-
-// CLEAR MAP
-function clearData() {
-  path = [];
-  polyline.setLatLngs([]);
-}
-
 </script>
 
 </body>
