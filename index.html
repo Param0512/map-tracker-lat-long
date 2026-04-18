@@ -2,12 +2,24 @@
 <html>
 <head>
   <title>GPS Tracker</title>
-
-  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
-
+  
   <style>
     #map { height: 400px; }
+
+    #status {
+      margin: 10px 0;
+      font-weight: bold;
+    }
+
+    .recording {
+      color: red;
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
   </style>
 </head>
 
@@ -16,11 +28,13 @@
 <h2>GPS Tracker</h2>
 
 <button onclick="startTracking()">Start</button>
-<button onclick="stopTracking()">Stop & Download</button>
+<button onclick="stopTracking()">Stop</button>
+
+<div id="status">Status: Stopped</div>
+<div id="timer">Time: 0 sec</div>
 
 <div id="map"></div>
 
-<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
@@ -31,11 +45,34 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 }).addTo(map);
 
 let intervalId;
+let timerId;
+let seconds = 0;
+
 let path = [];
 let polyline = L.polyline([], {color: 'blue'}).addTo(map);
 
+function updateStatus(isRecording) {
+  let status = document.getElementById("status");
+
+  if (isRecording) {
+    status.innerHTML = "🔴 Recording...";
+    status.classList.add("recording");
+  } else {
+    status.innerHTML = "⏹ Stopped";
+    status.classList.remove("recording");
+  }
+}
+
 function startTracking() {
   if (intervalId) return;
+
+  updateStatus(true);
+
+  // ⏱ Timer start
+  timerId = setInterval(() => {
+    seconds++;
+    document.getElementById("timer").innerText = "Time: " + seconds + " sec";
+  }, 1000);
 
   intervalId = setInterval(() => {
     navigator.geolocation.getCurrentPosition((pos) => {
@@ -48,24 +85,20 @@ function startTracking() {
       map.setView([lat, lng], 16);
 
       console.log("Lat:", lat, "Lng:", lng);
-    }, (err) => console.log(err), {
-      enableHighAccuracy: true
     });
-  }, 1000); // हर 1 second
+  }, 1000);
 }
 
 function stopTracking() {
   clearInterval(intervalId);
+  clearInterval(timerId);
+
   intervalId = null;
+  timerId = null;
+
+  updateStatus(false);
 
   console.log("Full Path:", path);
-
-  // 📥 Download as JSON file
-  let dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(path));
-  let dlAnchor = document.createElement('a');
-  dlAnchor.setAttribute("href", dataStr);
-  dlAnchor.setAttribute("download", "gps_path.json");
-  dlAnchor.click();
 }
 </script>
 
