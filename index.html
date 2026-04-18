@@ -3,7 +3,6 @@
 <head>
   <title>GPS Tracker</title>
 
-  <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
   <style>
@@ -16,11 +15,10 @@
 <h2>GPS Tracker</h2>
 
 <button onclick="startTracking()">Start</button>
-<button onclick="stopTracking()">Stop</button>
+<button onclick="stopTracking()">Stop & Download</button>
 
 <div id="map"></div>
 
-<!-- Leaflet JS -->
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
 <script>
@@ -30,25 +28,69 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   maxZoom: 19
 }).addTo(map);
 
-let watchId;
+// ===== VARIABLES =====
+let intervalId = null;
 let path = [];
-let polyline = L.polyline([], {color: 'blue'}).addTo(map);
+let polyline = L.polyline([], { color: 'blue' }).addTo(map);
 
+// ===== START TRACKING =====
 function startTracking() {
-  watchId = navigator.geolocation.watchPosition((pos) => {
-    let lat = pos.coords.latitude;
-    let lng = pos.coords.longitude;
+  if (intervalId) return;
 
-    path.push([lat, lng]);
-    polyline.addLatLng([lat, lng]);
+  path = [];
+  polyline.setLatLngs([]);
 
-    map.setView([lat, lng], 16);
-  });
+  intervalId = setInterval(() => {
+    navigator.geolocation.getCurrentPosition((pos) => {
+      let lat = pos.coords.latitude;
+      let lng = pos.coords.longitude;
+
+      path.push([lat, lng]);
+      polyline.addLatLng([lat, lng]);
+
+      map.setView([lat, lng], 16);
+
+      console.log(lat, lng);
+    }, (err) => console.log(err), {
+      enableHighAccuracy: true
+    });
+  }, 1000); // ⏱ 1 sec
 }
 
+// ===== STOP + DOWNLOAD =====
 function stopTracking() {
-  navigator.geolocation.clearWatch(watchId);
-  console.log("Full Path:", path);
+  clearInterval(intervalId);
+  intervalId = null;
+
+  downloadJSON();
+  downloadCSV();
+}
+
+// ===== JSON DOWNLOAD =====
+function downloadJSON() {
+  let dataStr = "data:text/json;charset=utf-8," +
+    encodeURIComponent(JSON.stringify(path));
+
+  let link = document.createElement("a");
+  link.href = dataStr;
+  link.download = "gps_path.json";
+  link.click();
+}
+
+// ===== CSV DOWNLOAD =====
+function downloadCSV() {
+  let csv = "Latitude,Longitude\n";
+
+  path.forEach(p => {
+    csv += p[0] + "," + p[1] + "\n";
+  });
+
+  let dataStr = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+
+  let link = document.createElement("a");
+  link.href = dataStr;
+  link.download = "gps_path.csv";
+  link.click();
 }
 </script>
 
